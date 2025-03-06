@@ -1,66 +1,82 @@
-const express = require("express");
-const router = express.Router();
-const Category = require("../schemas/category");
+var express = require('express');
+var router = express.Router();
+let categoryModel = require('../schemas/category')
 
-// Lấy tất cả danh mục
-router.get("/", async (req, res) => {
+
+
+router.get('/', async function(req, res, next) {
+    let categories = await categoryModel.find({ isDeleted: false });
+    res.status(200).send({
+      success: true,
+      data: categories
+    });
+  });
+  
+router.get('/:id', async function(req, res, next) {
+    try {
+      let id = req.params.id;
+      let category = await categoryModel.findOne({ _id: id, isDeleted: false });
+      if (!category) {
+        return res.status(404).send({
+          success: false,
+          message: "Không có ID phù hợp"
+        });
+      }
+      res.status(200).send({
+        success: true,
+        data: category
+      });
+    } catch (error) {
+      res.status(404).send({
+        success: false,
+        message: "Không có ID phù hợp"
+      });
+    }
+  });
+
+router.post('/', async function(req, res, next) {
   try {
-    let categories = await Category.find();
-    res.status(200).json({ success: true, data: categories });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-// Lấy danh mục theo ID
-router.get("/:id", async (req, res) => {
-  try {
-    let category = await Category.findById(req.params.id);
-    if (!category) throw new Error("Danh mục không tồn tại");
-
-    res.status(200).json({ success: true, data: category });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-// Tạo danh mục mới
-router.post("/", async (req, res) => {
-  try {
-    let newCategory = new Category(req.body);
+    let newCategory = new categoryModel({
+      name: req.body.name,
+    })
     await newCategory.save();
-
-    res.status(201).json({ success: true, data: newCategory });
+    res.status(200).send({
+      success:true,
+      data:newCategory
+    });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(404).send({
+      success:false,
+      message:error.message
+    });
   }
 });
 
-// Cập nhật danh mục theo ID
-router.put("/:id", async (req, res) => {
-  try {
-    let updatedCategory = await Category.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+router.put('/:id', async function(req, res, next) {
+    try {
+      let id = req.params.id;
+      let updatedCategory = await categoryModel.findByIdAndUpdate(id, req.body, { new: true });
+      if (!updatedCategory) {
+        return res.status(404).send({ success: false, message: "Không tìm thấy category" });
+      }
+      res.status(200).send({ success: true, data: updatedCategory });
+    } catch (error) {
+      res.status(400).send({ success: false, message: error.message });
+    }
+  });
+  
+router.delete('/:id', async function(req, res, next) {
+    try {
+      let id = req.params.id;
+      let category = await categoryModel.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
+      if (!category) {
+        return res.status(404).send({ success: false, message: "Không tìm thấy category" });
+      }
+      res.status(200).send({ success: true, message: "Success" });
+    } catch (error) {
+      res.status(400).send({ success: false, message: error.message });
+    }
+  });
 
-    if (!updatedCategory) throw new Error("Danh mục không tồn tại");
-
-    res.status(200).json({ success: true, data: updatedCategory });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-// Xóa danh mục
-router.delete("/:id", async (req, res) => {
-  try {
-    await Category.findByIdAndDelete(req.params.id);
-    res.status(200).json({ success: true, message: "Đã xóa danh mục" });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
 
 module.exports = router;
